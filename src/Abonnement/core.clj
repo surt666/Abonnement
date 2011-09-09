@@ -9,7 +9,7 @@
 
 (defprotocol AbonnementHandler
   (opret [abon])
-  (slet [abon])
+  (opsig [abon])
   (find-abon [abon])
   (find-alle-abon-for-instnr [abon])
   (find-alle-abon-for-account [abon])
@@ -37,8 +37,9 @@
   (find-abon [abon]
     (let [s (riak-get "abonnementer" abon)]
       (Abonnement. (:id abon) (:accountid abon) (:varenr abon) (:status abon) (:aftalenr abon) (:startdato abon) (:meta abon))))
-  (slet [abon]
-    (riak/delete rc "abonnementer" (:id abon))) ;http://localhost:8098/mapred
+  (opsig [abon]
+    (let [abon-opsagt (assoc abon :status "opsagt")]
+      (riak-put "abonnementer" abon)))   ;http://localhost:8098/mapred
   (find-alle-abon-for-account [abon]
     (let [accountid (:accountid abon)
           ro (riak/map-reduce rc

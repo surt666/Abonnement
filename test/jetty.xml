@@ -1,0 +1,105 @@
+<Configure id="Server" class="org.mortbay.jetty.Server">
+  <New class="org.mortbay.jetty.plus.naming.Resource">
+    <Arg/>
+    <Arg>java:comp/env/jdbc/EDM</Arg>
+    <Arg>
+      <New class="oracle.jdbc.pool.OracleDataSource">
+        <Set name="DriverType">thin</Set>
+        <Set name="URL">jdbc:oracle:thin:@lisbon:1521:tctvspoc</Set>
+        <Set name="User">k2_dw</Set>
+        <Set name="Password">K2_DW_ON_SPOC</Set>
+      </New>
+    </Arg>
+  </New>
+  <New class="org.mortbay.jetty.plus.naming.Resource">
+    <Arg/>
+    <Arg>java:comp/env/kasia2/afsaetning/log-array-state</Arg>
+    <Arg>
+      <New class="java.lang.String">
+        <Arg>true</Arg>
+      </New>
+    </Arg>
+  </New>
+  <New class="org.mortbay.jetty.plus.naming.Resource">
+    <Arg/>
+    <Arg>java:comp/env/kasia2/afsaetning/ordre-url</Arg>
+    <Arg>
+      <New class="java.lang.String">
+        <Arg>http://darton:41001/ordre-v1</Arg>
+      </New>
+    </Arg>
+  </New>
+  <New class="org.mortbay.jetty.plus.naming.Resource">
+    <Arg/>
+    <Arg>java:comp/env/kasia2/afsaetning/produkt-url</Arg>
+    <Arg>
+      <New class="java.lang.String">
+        <Arg>http://darton:41001/produkt-v1</Arg>
+      </New>
+    </Arg>
+  </New>
+  <New class="org.mortbay.jetty.plus.naming.Resource">
+    <Arg/>
+    <Arg>java:comp/env/kasia2/afsaetning/model1-antal</Arg>
+    <Arg>
+      <New class="java.lang.Integer">
+        <Arg>4</Arg>
+      </New>
+    </Arg>
+  </New>
+  <New class="org.mortbay.jetty.plus.naming.Resource">
+    <Arg/>
+    <Arg>java:comp/env/kasia2/afsaetning/model2-antal</Arg>
+    <Arg>
+      <New class="java.lang.Integer">
+        <Arg>2</Arg>
+      </New>
+    </Arg>
+  </New>
+  <New class="org.mortbay.jetty.plus.naming.Resource">
+    <Arg/>
+    <Arg>java:comp/env/kasia2/afsaetning/model3-antal</Arg>
+    <Arg>
+      <New class="java.lang.Integer">
+        <Arg>3</Arg>
+      </New>
+    </Arg>
+  </New>
+  <New class="org.mortbay.jetty.plus.naming.Resource">
+    <Arg/>
+    <Arg>java:comp/env/kasia2/afsaetning/art-from-file</Arg>
+    <Arg>
+      <New class="java.lang.Boolean">
+        <Arg>true</Arg>
+      </New>
+    </Arg>
+  </New>
+  <New class="org.mortbay.jetty.plus.naming.Resource">
+    <Arg/>
+    <Arg>java:comp/env/kasia2/kasia-host</Arg>
+    <Arg>
+      <New class="java.lang.String">
+        <Arg>http://darton:40210</Arg>
+      </New>
+    </Arg>
+  </New>
+
+  <!--New class="org.mortbay.jetty.plus.naming.Resource">
+    <Arg/>
+    <Arg>java:comp/env/local/afsaetning/proxy-port</Arg>
+    <Arg>
+      <New class="java.lang.Integer">
+        <Arg>8080</Arg>
+      </New>
+    </Arg>
+  </New>
+  <New class="org.mortbay.jetty.plus.naming.Resource">
+    <Arg/>
+    <Arg>java:comp/env/local/afsaetning/proxy-host</Arg>
+    <Arg>
+      <New class="java.lang.String">
+        <Arg>sltarray02</Arg>
+      </New>
+    </Arg>
+  </New-->
+</Configure>

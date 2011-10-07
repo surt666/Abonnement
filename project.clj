@@ -1,12 +1,15 @@
 (defproject Abonnement "1.0.0"
   :description "FIXME: write description"
-  :dependencies [[org.clojure/clojure "1.2.1"]
+  :dependencies [[org.clojure/clojure "1.2.0"]
+                 [org.clojure/java.jdbc "0.0.6"]
+                 [org.clojure/data.json "0.1.1"]
                  [org.clojars.ossareh/clj-riak "0.1.0-SNAPSHOT"]
                  [compojure "0.6.4"]
                  [ring/ring-core "0.3.10" :exclusions [javax.servlet/servlet-api]]
                  [ring/ring-servlet "0.3.10" :exclusions [javax.servlet/servlet-api]]                 
                  [yousee-common "1.0.28"]
                  [ring-common "1.1.1"]
+                 [http.async.client "0.3.1"]
                  [log4j "1.2.15" :exclusions [javax.mail/mail
                                               javax.jms/jms
                                               com.sun.jdmk/jmxtools
@@ -19,6 +22,8 @@
                      [oracle/ojdbc "6"]
                      [yij/lein-plugins "1.0.2"]
                      [javax.servlet/servlet-api "2.5"]
-                     [uk.org.alienscience/leiningen-war "0.0.13"]]
+                     [uk.org.alienscience/leiningen-war "0.0.13"]
+                     [swank-clojure "1.3.2"]]
   :aot [Abonnement.servlet]
-  :war {:web-content "war-root"})
+  :war {:web-content "war-root"}
+  :jvm-opts ["-Xmx2g"])

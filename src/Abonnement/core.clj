@@ -1,6 +1,6 @@
 (ns Abonnement.core
  (:require [clj-riak.client :as riak]
-           [clojure.contrib.json :as json]))
+           [clojure.data.json :as json]))
 
 (def rc (riak/init {:host "127.0.0.1" :port 8087}))
 
@@ -76,8 +76,9 @@
 
 (defn test-a []
   (let [abonnr (generate-abonnr)
-        a1 (Abonnement. abonnr "2457023" "1201505" "aktiv" "1291298" "08-09-2011" {:installation "82732837" :serienr ["82781237" "8237827"] :ordreid "82378"})]
+        a1 (Abonnement. abonnr "603186920" "1201505" "aktiv" "1291298" "08-09-2011" {:installation "82732837" :serienr ["82781237" "8237827"] :ordreid "82378"})]
     ;; (opret a1)
     (find-abon a1)
     (find-alle-abon-for-account a1)
-    (find-alle-abon-for-instnr a1)))
+    ;; (find-alle-abon-for-instnr a1)
+    ))

@@ -26,10 +26,12 @@
   (sql/with-connection edm
     (sql/with-query-results rs [{:fetch-size 10000} "select *                                    
                                  from k2_addressproduct
-                                 where (enddate is null or enddate > sysdate)"]
+                                 where (enddate is null or enddate > sysdate)
+                                 and rownum < 1000000"]
       (map #(convert-types %) (vec rs)))))
 
 (defn generate-sub-map [sub]
+  "Generer abonnement doc"
   {
    :id (.. UUID randomUUID toString)
    :juridiskaccount (:customerid sub)
@@ -41,6 +43,7 @@
    :meta {
           :amsid (:amsno sub)
           :instnr (:cableunitinstallationno sub)
+          :kontrakt (str (:amsno sub) ":" (:cableunitinstallationno sub)) ;get real kontrakt
           :juridisk (:customerid sub)
           :betaler (:customerid sub)
           :serienr (:serieno sub)
@@ -51,11 +54,12 @@
 
 (defn insert-sub [sub]
   (with-open [client (http-client/create-client)]
-    (let [resp (http-client/PUT client (str "http://riakloadbalancer-1546764266.eu-west-1.elb.amazonaws.com:8098/riak/abonnementer/" (:amsno sub) "." (:cableunitinstallationno sub) "." (:customerid sub) "." (:agreementno sub) "." (:productid sub) "?returnbody=false")
+    (let [resp (http-client/PUT client (str "http://riakloadbalancer-1546764266.eu-west-1.elb.amazonaws.com:8098/riak/abonnementer/" (:amsno sub) "." (:cableunitinstallationno sub) "." (:customerid sub) "." (:agreementno sub) "." (:productid sub) "?returnbody")
                                 :body (json/json-str (generate-sub-map sub))                          
                                 :headers {:content-type "application/json"
                                           :x-riak-index-amsinst_bin (str (:amsno sub) ":" (:cableunitinstallationno sub))
-                                          :x-riak-index-juridiskaccount_bin (:customerid sub)}
+                                          :x-riak-index-juridiskaccount_bin (:customerid sub)
+                                          :x-riak-index-betaleraccount_bin (:customerid sub)}
                                 :proxy {:host "sltarray02" :port 8080})]
       (when-not (http-client/done? resp)
         (http-client/await resp)

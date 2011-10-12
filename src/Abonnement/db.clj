@@ -4,13 +4,10 @@
       }
   Abonnement.db
   (:use yousee-common.common)
-  (:require [clojure.java.jdbc :as sql]
-            [clj-riak.client :as riak]
+  (:require [clojure.java.jdbc :as sql]            
             [clojure.data.json :as json]
             [http.async.client :as http-client])
   (:import (java.util UUID)))
-
-(def rcdb (riak/init {:host "localhost" :port 8087}))
 
 (def edm {:classname "oracle.jdbc.driver.OracleDriver", :subprotocol "oracle:thin", :subname "@lisbon.tdk.dk:1521:tctvspoc", :user "k2_dw", :password "K2_DW_ON_SPOC"})
 
@@ -37,9 +34,10 @@
    :juridiskaccount (:customerid sub)
    :betaleraccount (:customerid sub)
    :varenr (:productid sub)
-   :status "active"
-   :aftalenr (:agreementno sub)
-   :startdato (:startdate sub)
+   :status "aktiv"
+   :parent (:agreementno sub)
+   :start (:startdate sub)
+   :opdateret (:startdate sub)
    :meta {
           :amsid (:amsno sub)
           :instnr (:cableunitinstallationno sub)
@@ -54,7 +52,7 @@
 
 (defn insert-sub [sub]
   (with-open [client (http-client/create-client)]
-    (let [resp (http-client/PUT client (str "http://riakloadbalancer-1546764266.eu-west-1.elb.amazonaws.com:8098/riak/abonnementer/" (:amsno sub) "." (:cableunitinstallationno sub) "." (:customerid sub) "." (:agreementno sub) "." (:productid sub) "?returnbody")
+    (let [resp (http-client/PUT client (str "http://riakloadbalancer-1546764266.eu-west-1.elb.amazonaws.com:8098/riak/abonnementer/" (:amsno sub) "." (:cableunitinstallationno sub) "." (:customerid sub) "." (:agreementno sub) "." (:productid sub) "?returnbody=false")
                                 :body (json/json-str (generate-sub-map sub))                          
                                 :headers {:content-type "application/json"
                                           :x-riak-index-amsinst_bin (str (:amsno sub) ":" (:cableunitinstallationno sub))

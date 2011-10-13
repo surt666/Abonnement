@@ -1,5 +1,7 @@
 (ns Abonnement.core
- (:require [clojure.data.json :as json]))
+  (:require [clojure.data.json :as json]
+            [http.async.client :as http-client])
+  (:import (java.util UUID)))
 
 (def lb "http://riakloadbalancer-1546764266.eu-west-1.elb.amazonaws.com:8098")
 
@@ -24,7 +26,7 @@
 (defn riak-put [bucket rec]
   (with-open [client (http-client/create-client)]
     (let [rec2 (when (nil? (:id rec)) (assoc rec :id (.. UUID randomUUID toString)))
-          resp (http-client/PUT client (str lb "/riak/" bucket "/" (:id rec) "?returnbody=false")
+          resp (http-client/PUT client (str lb "/buckets/" bucket "/keys/" (:id rec) "?returnbody=false")
                                 :body (json/json-str rec2)                          
                                 :headers {:content-type "application/json"
                                           :x-riak-index-amsinst_bin (str (get-in rec [:meta :amsid]) ":" (get-in rec [:meta :instnr]))
@@ -36,7 +38,7 @@
 
 (defn riak-get [bucket rec]
   (with-open [client (http-client/create-client)]
-    (let [resp (http-client/GET client (str lb "/riak/" bucket "/" (:id rec) "?returnbody=true") 
+    (let [resp (http-client/GET client (str lb "/buckets/" bucket "/keys/" (:id rec) "?returnbody=true") 
                                 :headers {:content-type "application/json"}
                                 :proxy {:host "sltarray02" :port 8080})]
       (wait-resp resp)
@@ -106,3 +108,19 @@
     (find-alle-abon-for-account a1)
     ;; (find-alle-abon-for-instnr a1)
     ))
+
+(comment {
+  "inputs" : {
+              "bucket":"abonnementer",
+              "index":"account_bin",
+              "key": "605050211"    
+              },
+  "query" : [{"map" : {"language":"javascript",
+                       "keep":true,
+                       "source":"function(val) {                                    
+                                   return val; 
+                                 }"
+                       }
+              }
+             ]
+  })

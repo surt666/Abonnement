@@ -9,24 +9,25 @@
             [compojure.handler :as handler]            
             [clojure.contrib.json :as json]))
 
-(defn- generate-aftalenr []
-  "129291289")
-
-(defn- opret-abonnement [body]
-  (if (nil? (:aftalenr body))
-    (Abonnement.core.Abonnement. (:accountid body) (:varenr body) (:status body) (generate-aftalenr) (:startdato body) (:meta body))
-    (Abonnement.core.Abonnement. (:accountid body) (:varenr body) (:status body) (:aftalenr body) (:startdato body) (:meta body))))
+(defn- opret-abonnement [req]  
+  (let [body (parse-body (:body req))]
+    (Abonnement.core.Abonnement. (:id body) (:juridiskaccount body) (:bataleraccount body) (:varenr body) (:status body) (:parent body) (:start body) (:opdateret body) (:historik body) (:meta body))))
 
 (defroutes handler 
-  (POST "/abonnement/opret" req      
-        (let [body (parse-body (:body req))
-              objekt (opret-abonnement body)]          
-          (try
-            (opret objekt)
-            {:status 201}           
-            (catch Exception e
-              (prn "E" (.getMessage e))
-              (json-response {:res (.getMessage e)} "application/json" :status 409)))))
+  (POST "/abonnementer" req              
+        (opret (opret-abonnement req)))
+  (PUT "/abonnementer" req
+       (opret (opret-abonnement req)))
+  (GET "/abonnementer/:id" [id]
+       (find-abon (Abonnement.core.Abonnement. id nil nil nil nil nil nil nil nil nil)))
+  (DELETE "/abonnemenert/:id" [id]
+          (opsig (Abonnement.core.Abonnement. id nil nil nil nil nil nil nil nil nil)))
+  (GET "/abonnementer/installation/:amsid/:instnr" [amsid instnr]
+       (find-alle-abon-for-amsid-og-instnr amsid instnr))
+  (GET "/abonnementer/juridisk/:id" [id]
+       (find-alle-abon-for-account id))
+  (GET "/abonnementer/betaler/:id" [id]
+       (find-alle-abon-for-account id "betaler"))
 
   (route/not-found "UPS det er jo helt forkert det der !"))
 

@@ -1,5 +1,5 @@
 <Configure id="Server" class="org.mortbay.jetty.Server">
-  <New class="org.mortbay.jetty.plus.naming.Resource">
+  <!--New class="org.mortbay.jetty.plus.naming.Resource">
     <Arg/>
     <Arg>java:comp/env/jdbc/EDM</Arg>
     <Arg>
@@ -84,7 +84,7 @@
     </Arg>
   </New>
 
-  <!--New class="org.mortbay.jetty.plus.naming.Resource">
+  <New class="org.mortbay.jetty.plus.naming.Resource">
     <Arg/>
     <Arg>java:comp/env/local/afsaetning/proxy-port</Arg>
     <Arg>

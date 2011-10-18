@@ -5,6 +5,8 @@
 
 (def lb "http://riakloadbalancer-1546764266.eu-west-1.elb.amazonaws.com:8098")
 
+(declare find-abon)
+
 (defrecord Abonnement [id juridiskaccount betaleraccount varenr status parent start opdateret historik meta])
 
 (defn wait-resp [resp]
@@ -26,7 +28,7 @@
 
 (defn- opdater-historik [nyt-abon gl-abon]
   (let [diff (dissoc (map-difference nyt-abon gl-abon) :historik)
-        historik (:historik gl-abon)
+        historik (vec (:historik gl-abon))
         ny-historik (conj historik (assoc diff :dato "bla"))] ;;Formater rigtig dato
     (assoc nyt-abon :historik ny-historik)))
 
@@ -48,14 +50,14 @@
       (wait-resp resp)
       (http-client/status resp))))
 
-(defn riak-get [bucket id]
+(defn riak-get [bucket id]  
   (with-open [client (http-client/create-client)]
     (let [resp (http-client/GET client (str lb "/buckets/" bucket "/keys/" id "?returnbody=true&r=2") 
                                 :headers {:content-type "application/json"}
                                 :proxy {:host "sltarray02" :port 8080})]
       (wait-resp resp)      
       (if (= 200 (:code (http-client/status resp)))
-        (let [etag (json/read-json (:etag (http-client/headers resp)))]
+        (let [etag (json/read-json (:etag (http-client/headers resp)))]          
           [etag (json/read-json (http-client/string resp))])
         (http-client/status resp)))))
 
@@ -64,7 +66,7 @@
   (riak-put "abonnementer" abon))
 
 (defn find-abon [id]
-  (let [a (riak-get "abonnementer" id)
+  (let [a (riak-get "abonnementer" id)     
         s (get a 1)]  
     {:etag (get a 0)
      :abonnement (Abonnement. (:id s) (:juridiskaccount s) (:betaleraccount s) (:varenr s) (:status s) (:parent s) (:start s) (:opdateret s) (:historik s) (:meta s))}))

@@ -13,7 +13,7 @@
 
 (defn get-all-subscriptions-for-amsno [amsno]
   (sql/with-connection edm
-    (sql/with-query-results rs ["select *                                    
+    (sql/with-query-results rs ["select *   
                                  from k2_addressproduct
                                  where amsno = ?
                                  and (enddate is null or enddate > sysdate)" amsno]
@@ -21,7 +21,7 @@
 
 (defn get-all-subscriptions []
   (sql/with-connection edm
-    (sql/with-query-results rs [{:fetch-size 10000} "select *                                    
+    (sql/with-query-results rs [{:fetch-size 1000} "select customerid,productid,agreementno,startdate,amsno,cableunitinstallationno,cableunitid,serieno,modemid
                                  from k2_addressproduct
                                  where (enddate is null or enddate > sysdate)"]
       (map #(convert-types %) (vec rs)))))
@@ -56,16 +56,18 @@
           resp (http-client/PUT client url
                                 :body (json/json-str sub2)                          
                                 :headers {:content-type "application/json"
-                                          :x-riak-index-amsinst_bin (str (get-in sub2 [:meta :amsno]) ":" (get-in sub2 [:meta :instnr]))
+                                          :x-riak-index-amsinst_bin (str (get-in sub2 [:meta :amsid]) ":" (get-in sub2 [:meta :instnr]))
                                           :x-riak-index-juridiskaccount_bin (:juridiskaccount sub2)
                                           :x-riak-index-betaleraccount_bin (:betaleraccount sub2)}
                                 :proxy {:host "sltarray02" :port 8080})]
       (when-not (http-client/done? resp)
         (http-client/await resp)
         (http-client/done? resp))
-      (http-client/status resp))))
+      ;; (http-client/status resp)
+      )))
 
 (defn insert-subs-in-riak []
   (let [subs (get-all-subscriptions)    
-        res (pmap #(:code (insert-sub %)) subs)]   
-    [(count (filter #(= 204 %) res)) (count (filter #(not (= 204 %)) res))]))
+        res (doall (pmap #(:code (insert-sub %)) subs))]   
+    ;; [(count (filter #(= 204 %) res)) (count (filter #(not (= 204 %)) res))]
+    nil))

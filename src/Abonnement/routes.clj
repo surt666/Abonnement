@@ -42,16 +42,17 @@
   (let [body (parse-body (:body req))]
     (Abonnement.core.Abonnement. (:id body) (:juridiskaccount body) (:betaleraccount body) (:varenr body) (:status body) (:parent body) (:start body) (:opdateret body) (:historik body) (:meta body))))
 
-(defroutes handler 
-  (POST "/abonnementer" req              
-        (json-response (opret (opret-abonnement req)) "application/json;charset=UTF-8"))
+(defroutes handler   
   (PUT "/abonnementer" req
-       (json-response (opret (opret-abonnement req)) "application/json;charset=UTF-8"))
+       (let [data (opret (opret-abonnement req))
+             status (if (= 204 (:status data) 200) (:status data))]
+         (json-response (:abonnement data) "application/json;charset=UTF-8" :status status)))
   (GET "/abonnementer/:id" [id]
        (let [abon (find-abon id)]
          (json-response (:abonnement abon) "application/json;charset=UTF-8" :etag (:etag abon))))
-  (DELETE "/abonnemenert/:id" [id]
-          (opsig id))
+  (DELETE "/abonnementer/:id" [id]
+          (let [data (opsig id)]
+            (json-response (:abonnement data) "application/json;charset=UTF-8" :status (:status data))))
   (GET "/abonnementer/installation/:amsid/:instnr" [amsid instnr]
        (let [data (find-alle-abon-for-amsid-og-instnr amsid instnr)
              status (if (empty? data) 404 200)]

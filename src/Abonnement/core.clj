@@ -1,11 +1,17 @@
 (ns Abonnement.core
   (:require [clojure.data.json :as json]
-            [http.async.client :as http-client])
+            [http.async.client :as http-client]
+            [clj-time.core :as tc]
+            [clj-time.format :as tf])
   (:import (java.util UUID)))
 
 (def lb "http://riakloadbalancer-1546764266.eu-west-1.elb.amazonaws.com:8098")
 
 (declare find-abon)
+
+(def date-formatter (tf/formatter "dd-MM-yyyy"))
+
+(def datetime-formatter (tf/formatter "dd-MM-yyyy|hh:mm:ss"))
 
 (defrecord Abonnement [id juridiskaccount betaleraccount varenr status parent start opdateret historik meta])
 
@@ -26,29 +32,31 @@
               :else    (recur m (next ks))))
       (persistent! m))))
 
-(defn- opdater-historik [nyt-abon gl-abon]
-  (let [diff (dissoc (map-difference nyt-abon gl-abon) :historik)
+(defn- opdater-historik [nyt-abon gl-abon] 
+  (let [diff (dissoc (map-difference nyt-abon gl-abon) :historik :opdateret)
         historik (vec (:historik gl-abon))
-        ny-historik (conj historik (assoc diff :dato "bla"))] ;;Formater rigtig dato
-    (assoc nyt-abon :historik ny-historik)))
+        ny-historik (conj historik (assoc diff :dato (tf/unparse datetime-formatter (tc/now))))]
+    (if (not (empty? diff))
+      (assoc nyt-abon :historik ny-historik)
+      nyt-abon)))
 
 (defn riak-put [bucket rec]
   (with-open [client (http-client/create-client)]
     (let [uuid (.. UUID randomUUID toString)
-          rec2 (if (nil? (:id rec)) (assoc rec :id uuid) rec)
-          exist-rec (find-abon rec2)
+          rec2 (if (nil? (:id rec)) (assoc rec :id uuid :opdateret (tf/unparse date-formatter (tc/now))) (assoc rec :opdateret (tf/unparse date-formatter (tc/now))))
+          exist-rec (find-abon (:id rec2)) ;; check for eksisterende         
           ifmatch (:etag exist-rec)
-          rec-hist (if ifmatch (opdater-historik rec2 exist-rec) rec2)          
+          rec-hist (if ifmatch (opdater-historik rec2 (:abonnement exist-rec)) rec2)
           headers {:content-type "application/json"
                    :x-riak-index-amsinst_bin (str (get-in rec-hist [:meta :amsid]) ":" (get-in rec-hist [:meta :instnr]))
                    :x-riak-index-juridiskaccount_bin (:juridiskaccount rec-hist)
                    :x-riak-index-betaleraccount_bin (:betaleraccount rec-hist)}
-          resp (http-client/PUT client (str lb "/buckets/" bucket "/keys/" (:id rec-hist) "?returnbody=false&w=2&dw=2")
+          resp (http-client/PUT client (str lb "/buckets/" bucket "/keys/" (:id rec-hist) "?returnbody=true&w=2&dw=2")
                                 :body (json/json-str rec-hist)                          
-                                :headers (if (nil? ifmatch) headers (assoc headers :if-match ifmatch))
+                                :headers headers ;; FIX!!! (if (nil? ifmatch) headers (assoc headers :if-match ifmatch))
                                 :proxy {:host "sltarray02" :port 8080})]
       (wait-resp resp)
-      (http-client/status resp))))
+      {:abonnement rec-hist :status (:code (http-client/status resp))})))
 
 (defn riak-get [bucket id]  
   (with-open [client (http-client/create-client)]
@@ -60,7 +68,6 @@
         (let [etag (json/read-json (:etag (http-client/headers resp)))]          
           [etag (json/read-json (http-client/string resp))])
         (http-client/status resp)))))
-
 
 (defn opret [abon]
   (riak-put "abonnementer" abon))
@@ -74,7 +81,7 @@
 
 (defn opsig [id]
   (let [exist-rec (:abonnement (find-abon id))
-        abon-opsagt (assoc exist-rec :status "opsagt")]
+        abon-opsagt (assoc exist-rec :status "opsagt")]    
     (riak-put "abonnementer" abon-opsagt))) 
 
 (defn find-alle-abon-for-account [accid & abon-type]  

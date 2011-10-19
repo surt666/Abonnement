@@ -69,7 +69,8 @@
   (let [a (riak-get "abonnementer" id)     
         s (get a 1)]  
     {:etag (get a 0)
-     :abonnement (Abonnement. (:id s) (:juridiskaccount s) (:betaleraccount s) (:varenr s) (:status s) (:parent s) (:start s) (:opdateret s) (:historik s) (:meta s))}))
+     :abonnement (Abonnement. (:id s) (:juridiskaccount s) (:betaleraccount s) (:varenr s)
+                              (:status s) (:parent s) (:start s) (:opdateret s) (:historik s) (:meta s))}))
 
 (defn opsig [id]
   (let [exist-rec (:abonnement (find-abon id))
@@ -97,6 +98,7 @@
       (if (= 200 (:code (http-client/status resp)))
         (json/read-json (http-client/string resp))
         (http-client/status resp)))))
+
 (defn find-alle-abon-for-amsid-og-instnr [amsid instnr]
   (with-open [client (http-client/create-client)]
     (let [resp (http-client/POST client (str lb "/mapred")

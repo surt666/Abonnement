@@ -1,7 +1,7 @@
 (defproject Abonnement "1.0.0"
   :description "Abonnement system"
   :dependencies [[org.clojure/clojure "1.3.0"]
-                 [org.clojure/java.jdbc "0.0.6"]
+                 [org.clojure/java.jdbc "0.1.0"]
                  [org.clojure/data.json "0.1.1"]   
                  [compojure "0.6.4"]
                  [org.clojars.retiman/clj-time "0.3.0"] 

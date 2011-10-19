@@ -53,11 +53,17 @@
   (DELETE "/abonnemenert/:id" [id]
           (opsig id))
   (GET "/abonnementer/installation/:amsid/:instnr" [amsid instnr]
-       (json-response (find-alle-abon-for-amsid-og-instnr amsid instnr) "application/json;charset=UTF-8"))
+       (let [data (find-alle-abon-for-amsid-og-instnr amsid instnr)
+             status (if (empty? data) 404 200)]
+         (json-response data "application/json;charset=UTF-8" :status status)))
   (GET "/abonnementer/juridisk/:id" [id]
-       (json-response (find-alle-abon-for-account id) "application/json;charset=UTF-8"))
+       (let [data (find-alle-abon-for-account id)
+             status (if (empty? data) 404 200)]
+         (json-response data "application/json;charset=UTF-8" :status status)))
   (GET "/abonnementer/betaler/:id" [id]
-       (json-response (find-alle-abon-for-account id "betaler") "application/json;charset=UTF-8"))
+       (let [data (find-alle-abon-for-account id "betaler")
+             status (if (empty? data) 404 200)]
+         (json-response data "application/json;charset=UTF-8" :status status)))
 
   (route/not-found "UPS det er jo helt forkert det der !"))
 

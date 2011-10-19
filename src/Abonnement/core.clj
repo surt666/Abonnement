@@ -40,23 +40,27 @@
       (assoc nyt-abon :historik ny-historik)
       nyt-abon)))
 
-(defn riak-put [bucket rec]
+(defn riak-put [bucket rec etag]
   (with-open [client (http-client/create-client)]
     (let [uuid (.. UUID randomUUID toString)
           rec2 (if (nil? (:id rec)) (assoc rec :id uuid :opdateret (tf/unparse date-formatter (tc/now))) (assoc rec :opdateret (tf/unparse date-formatter (tc/now))))
-          exist-rec (find-abon (:id rec2)) ;; check for eksisterende         
-          ifmatch (:etag exist-rec)
-          rec-hist (if ifmatch (opdater-historik rec2 (:abonnement exist-rec)) rec2)
+          exist-rec (find-abon (:id rec2)) ;; check for eksisterende
+          not-changed (= etag (:etag exist-rec))         
+          rec-hist (if etag (opdater-historik rec2 (:abonnement exist-rec)) rec2)
           headers {:content-type "application/json"
                    :x-riak-index-amsinst_bin (str (get-in rec-hist [:meta :amsid]) ":" (get-in rec-hist [:meta :instnr]))
                    :x-riak-index-juridiskaccount_bin (:juridiskaccount rec-hist)
-                   :x-riak-index-betaleraccount_bin (:betaleraccount rec-hist)}
-          resp (http-client/PUT client (str lb "/buckets/" bucket "/keys/" (:id rec-hist) "?returnbody=true&w=2&dw=2")
-                                :body (json/json-str rec-hist)                          
-                                :headers headers ;; FIX!!! (if (nil? ifmatch) headers (assoc headers :if-match ifmatch))
-                                :proxy {:host "sltarray02" :port 8080})]
-      (wait-resp resp)
-      {:abonnement rec-hist :status (:code (http-client/status resp))})))
+                   :x-riak-index-betaleraccount_bin (:betaleraccount rec-hist)}]
+      (if not-changed
+        (let [resp (http-client/PUT client (str lb "/buckets/" bucket "/keys/" (:id rec-hist) "?returnbody=false&w=2&dw=2")
+                                    :body (json/json-str rec-hist)                          
+                                    :headers headers
+                                    :proxy {:host "sltarray02" :port 8080})]
+          (wait-resp resp)        
+          {:abonnement rec-hist
+           :status (:code (http-client/status resp))})
+        {:abonnement nil
+         :status 412}))))
 
 (defn riak-get [bucket id]  
   (with-open [client (http-client/create-client)]
@@ -69,8 +73,8 @@
           [etag (json/read-json (http-client/string resp))])
         (http-client/status resp)))))
 
-(defn opret [abon]
-  (riak-put "abonnementer" abon))
+(defn opret [abon & etag]
+  (riak-put "abonnementer" abon (first etag)))
 
 (defn find-abon [id]
   (let [a (riak-get "abonnementer" id)     

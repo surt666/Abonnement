@@ -29,32 +29,41 @@
     (Abonnement.core.Abonnement. (:id body) (:juridiskaccount body) (:betaleraccount body) (:varenr body) (:status body) (:parent body) (:start body) (:opdateret body) (:historik body) (:meta body))))
 
 (defroutes handler
-  (POST "/abonnementer" req
+  (POST ["/:context" , :context #".[^/]*"] req
        (let [data (opret (opret-abonnement req))
              status (if (= 204 (:status data) 200) (:status data))]
          (json-response (:abonnement data) "application/json;charset=UTF-8" :status status)))
-  (PUT "/abonnementer" req
+  (PUT ["/:context" , :context #".[^/]*"] req
        (let [ifmatch (get (:headers req) "if-match")
              data (opret (opret-abonnement req) ifmatch)            
              status (if (= 204 (:status data)) 200 (:status data))]
          (json-response (:abonnement data) "application/json;charset=UTF-8" :status status)))
-  (GET "/abonnementer/:id" [id]
+  (GET ["/:context/:id" , :context #".[^/]*"] [id]
        (let [abon (find-abon id)]
          (json-response (:abonnement abon) "application/json;charset=UTF-8" :etag (:etag abon) :expires "0" :cache-control "no-cache")))
-  (DELETE "/abonnementer/:id" [id]
+  (DELETE ["/:context/:id" , :context #".[^/]*"] [id]
           (let [data (opsig id)]
             (json-response (:abonnement data) "application/json;charset=UTF-8" :status (:status data))))
-  (GET "/abonnementer/installation/:amsid/:instnr" [amsid instnr]
+  (GET ["/:context/installation/:amsid/:instnr" , :context #".[^/]*"] [amsid instnr]
        (let [data (find-alle-abon-for-amsid-og-instnr amsid instnr)
-             status (if (empty? data) 404 200)]
+             status (cond
+                     (empty? data) 404
+                     (and (not (nil? (:code data))) (not (= (:code data) 200))) (:code data)
+                     :default 200)]
          (json-response data "application/json;charset=UTF-8" :status status :expires "0" :cache-control "no-cache")))
-  (GET "/abonnementer/juridisk/:id" [id]
+  (GET ["/:context/juridisk/:id" , :context #".[^/]*"] [id]
        (let [data (find-alle-abon-for-account id)
-             status (if (empty? data) 404 200)]
+             status (cond
+                     (empty? data) 404
+                     (and (not (nil? (:code data))) (not (= (:code data) 200))) (:code data)
+                     :default 200)]
          (json-response data "application/json;charset=UTF-8" :status status :expires "0" :cache-control "no-cache")))
-  (GET "/abonnementer/betaler/:id" [id]
+  (GET ["/:context/betaler/:id" , :context #".[^/]*"] [id]
        (let [data (find-alle-abon-for-account id "betaler")
-             status (if (empty? data) 404 200)]
+             status (cond
+                     (empty? data) 404
+                     (and (not (nil? (:code data))) (not (= (:code data) 200))) (:code data)
+                     :default 200)]
          (json-response data "application/json;charset=UTF-8" :status status :expires "0" :cache-control "no-cache")))
 
   (route/not-found "UPS det er jo helt forkert det der !"))

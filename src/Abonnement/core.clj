@@ -7,6 +7,10 @@
 
 (def lb "http://riakloadbalancer-1546764266.eu-west-1.elb.amazonaws.com:8098")
 
+(def abonnementer "abonnementer")
+
+;(def lb "http://127.0.0.1:8098")
+
 (declare find-abon)
 
 (def date-formatter (tf/formatter "dd-MM-yyyy"))
@@ -74,10 +78,10 @@
         (http-client/status resp)))))
 
 (defn opret [abon & etag]
-  (riak-put "abonnementer" abon (first etag)))
+  (riak-put abonnementer abon (first etag)))
 
 (defn find-abon [id]
-  (let [a (riak-get "abonnementer" id)     
+  (let [a (riak-get abonnementer id)     
         s (get a 1)]  
     {:etag (get a 0)
      :abonnement (Abonnement. (:id s) (:juridiskaccount s) (:betaleraccount s) (:varenr s)
@@ -86,17 +90,18 @@
 (defn opsig [id]
   (let [exist-rec (:abonnement (find-abon id))
         abon-opsagt (assoc exist-rec :status "opsagt")]    
-    (riak-put "abonnementer" abon-opsagt))) 
+    (riak-put abonnementer abon-opsagt))) 
 
 (defn find-alle-abon-for-account [accid & abon-type]  
   (with-open [client (http-client/create-client)]
     (let [index (if (= (first abon-type) "betaler") "betaleraccount_bin" "juridiskaccount_bin")
           resp (http-client/POST client (str lb "/mapred")
                                  :body (json/json-str {:inputs {
-                                                                :bucket "abonnementer"
+                                                                :bucket abonnementer
                                                                 :index index
                                                                 :key accid    
                                                                 }
+
                                                        :query [{:map {:language "javascript"  
                                                                       :name "Riak.mapValuesJson"   
                                                                       }
@@ -114,13 +119,39 @@
   (with-open [client (http-client/create-client)]
     (let [resp (http-client/POST client (str lb "/mapred")
                                  :body (json/json-str {:inputs {
-                                                                :bucket "abonnementer"
+                                                                :bucket abonnementer
                                                                 :index "amsinst_bin"
                                                                 :key (str amsid ":" instnr)    
                                                                 }
                                                        :query [{:map {:language "javascript"
                                                                       :name "Riak.mapValuesJson"
                                                                       }
+                                                                }
+                                                               ]
+                                                       })                                    
+                                 :headers {:content-type "application/json"}
+                                 :proxy {:host "sltarray02" :port 8080})]
+      (wait-resp resp)       
+      (if (= 200 (:code (http-client/status resp)))
+        (json/read-json (http-client/string resp))
+        (http-client/status resp)))))
+
+(defn find-antal-abonnementer []
+  (with-open [client (http-client/create-client)]
+    (let [resp (http-client/POST client (str lb "/mapred")
+                                 :body (json/json-str {:inputs abonnementer                               
+                                                       :query [{:map {:language "javascript"
+                                                                      :source "function mapCount() {
+                                                                                  return [1];
+                                                                               }"
+                                                                      }
+                                                                
+                                                                }
+                                                               {
+                                                                :reduce {
+                                                                         :language "javascript"
+                                                                         :name "Riak.reduceSum"
+                                                                         }
                                                                 }
                                                                ]
                                                        })                                    

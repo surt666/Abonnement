@@ -1,7 +1,7 @@
 (ns Abonnement.routes
   (:use compojure.core
         ring.util.response
-        Abonnement.core
+        Abonnement.redisabon
         yousee-common.wrappers        
        ;; ring.commonrest
         yousee-common.web)
@@ -26,43 +26,45 @@
 
 (defn- opret-abonnement [req]  
   (let [body (parse-body (:body req))]
-    (Abonnement.core.Abonnement. (:id body) (:juridiskaccount body) (:betaleraccount body) (:varenr body) (:status body) (:parent body) (:start body) (:opdateret body) (:historik body) (:meta body))))
+    (Abonnement.redisabon.Abonnement. (:id body) (:juridiskaccount body) (:betaleraccount body) (:varenr body) (:status body) (:parent body) (:start body) (:amsid body) (:instnr body) (:ordreid body) (:serienr body) (:aktiveringskode body) (:tlfnr body) (:juridisk body) (:betaler body) (:historik body))))
 
 (defroutes handler
   (POST ["/:context" , :context #".[^/]*"] req
-       (let [data (opret (opret-abonnement req))
-             status (if (= 204 (:status data)) 200 (:status data))]
-         (json-response (:abonnement data) "application/json;charset=UTF-8" :status status)))
+        (let [abon (opret-abonnement req)
+              res (opret abon)
+             status (if (= "OK" res) 200 400)]
+         (json-response abon "application/json;charset=UTF-8" :status status)))
   (PUT ["/:context" , :context #".[^/]*"] req
        (let [ifmatch (get (:headers req) "if-match")
-             data (opret (opret-abonnement req) ifmatch)            
-             status (if (= 204 (:status data)) 200 (:status data))]
-         (json-response (:abonnement data) "application/json;charset=UTF-8" :status status)))
+             abon (opret-abonnement req)
+             res (opdater abon ifmatch)            
+             status (cond
+                     (= "OK" res) 200
+                     (= "CHG" res) 412
+                     :default 400)]
+         (json-response abon "application/json;charset=UTF-8" :status status)))
   (GET ["/:context/:id" , :context #".[^/]*"] [id]
        (let [abon (find-abon id)]
-         (json-response (:abonnement abon) "application/json;charset=UTF-8" :etag (:etag abon) :expires "0" :cache-control "no-cache")))
+         (json-response abon "application/json;charset=UTF-8" :etag (hash abon) :expires "0" :cache-control "no-cache")))
   (DELETE ["/:context/:id" , :context #".[^/]*"] [id]
           (let [data (opsig id)]
-            (json-response (:abonnement data) "application/json;charset=UTF-8" :status (:status data))))
+            (json-response nil "application/json;charset=UTF-8" :status (if (or (= data 0) (= data 1)) 204 400))))
   (GET ["/:context/installation/:amsid/:instnr" , :context #".[^/]*"] [amsid instnr]
        (let [data (find-alle-abon-for-amsid-og-instnr amsid instnr)
              status (cond
-                     (empty? data) 404
-                     (and (not (nil? (:code data))) (not (= (:code data) 200))) (:code data)
+                     (empty? data) 404                     
                      :default 200)]
          (json-response data "application/json;charset=UTF-8" :status status :expires "0" :cache-control "no-cache")))
   (GET ["/:context/juridisk/:id" , :context #".[^/]*"] [id]
        (let [data (find-alle-abon-for-account id)
              status (cond
-                     (empty? data) 404
-                     (and (not (nil? (:code data))) (not (= (:code data) 200))) (:code data)
+                     (empty? data) 404                     
                      :default 200)]
          (json-response data "application/json;charset=UTF-8" :status status :expires "0" :cache-control "no-cache")))
   (GET ["/:context/betaler/:id" , :context #".[^/]*"] [id]
        (let [data (find-alle-abon-for-account id "betaler")
              status (cond
-                     (empty? data) 404
-                     (and (not (nil? (:code data))) (not (= (:code data) 200))) (:code data)
+                     (empty? data) 404                     
                      :default 200)]
          (json-response data "application/json;charset=UTF-8" :status status :expires "0" :cache-control "no-cache")))
 

@@ -32,8 +32,11 @@
                         res
                         (assoc res (name (first a)) (get abon (first a))))))))
 
-(defn opret [abon]
-  (let [abon-map (make-abon-map abon)]
+(defn nyt-abonnr []
+  (redis/incr db "abonnement:nr"))
+
+(defn set-redis [abon ny]
+  (let [abon-map (make-abon-map (if ny (assoc abon :id (str (nyt-abonnr))) abon))]
     (when (:juridiskaccount abon)
       (redis/sadd db (str "abonnement:" (:juridiskaccount abon) ":juridisk") (:id abon)))
     (when (:juridiskaccount abon)
@@ -43,6 +46,15 @@
     (when (:varenr abon)
       (redis/sadd db (str "abonnement:" (:varenr abon) ":varenr") (:id abon)))
     (redis/hmset db (str "abonnement:" (:id abon)) abon-map)))
+
+(defn opret [abon]
+  (set-redis abon true))
+
+(defn opdater [abon ifmatch]
+  (let [etag (hash (find-abon (:id abon)))]
+    (if (= etag ifmatch)
+      (set-redis abon false)
+      "CHG")))
 
 (defn find-abon [id]
   (let [res (redis/hgetall db (str "abonnement:" id))]

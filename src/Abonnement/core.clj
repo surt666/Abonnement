@@ -2,7 +2,8 @@
   (:require [clojure.data.json :as json]
             [http.async.client :as http-client]
             [clj-time.core :as tc]
-            [clj-time.format :as tf])
+            [clj-time.format :as tf]
+            [clj-redis.client :as redis])
   (:import (java.util UUID)))
 
 (def lb "http://riakloadbalancer-1546764266.eu-west-1.elb.amazonaws.com:8098")

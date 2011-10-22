@@ -32,17 +32,17 @@
   (POST ["/:context" , :context #".[^/]*"] req
         (let [abon (opret-abonnement req)
               res (opret abon)
-             status (if (= "OK" res) 200 400)]
-         (json-response abon "application/json;charset=UTF-8" :status status)))
+             status (if (= "OK" (get res 1)) 200 400)]
+         (json-response (get res 0) "application/json;charset=UTF-8" :status status)))
   (PUT ["/:context" , :context #".[^/]*"] req
        (let [ifmatch (get (:headers req) "if-match")
              abon (opret-abonnement req)
              res (opdater abon ifmatch)            
              status (cond
-                     (= "OK" res) 200
+                     (= "OK" (get res 1)) 204
                      (= "CHG" res) 412
                      :default 400)]
-         (json-response abon "application/json;charset=UTF-8" :status status)))
+         (json-response nil "application/json;charset=UTF-8" :status status)))
   (GET ["/:context/:id" , :context #".[^/]*"] [id]
        (let [abon (find-abon id)]
          (json-response abon "application/json;charset=UTF-8" :etag (hash abon) :expires "0" :cache-control "no-cache")))

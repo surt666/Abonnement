@@ -3,9 +3,14 @@
   (:require [clojure.data.json :as json]
             [clj-time.core :as tc]
             [clj-time.format :as tf]
+            [clj-redis.client :as redis]
             [clj-redis.client :as redis]))
 
 (def db (redis/init :url "redis://46.137.157.48"))
+
+(def date-formatter (tf/formatter "dd-MM-yyyy"))
+
+(def datetime-formatter (tf/formatter "dd-MM-yyyy|hh:mm:ss"))
 
 (defrecord Abonnement [id
                        juridiskaccount
@@ -24,6 +29,26 @@
                        betaler
                        historik])
 
+(defn map-difference [m1 m2]
+  (loop [m (transient {})
+         ks (concat (keys m1) (keys m2))]
+    (if-let [k (first ks)]
+      (let [e1 (find m1 k)
+            e2 (find m2 k)]
+        (cond (and e1 e2 (not= (e1 1) (e2 1))) (recur (assoc! m k (e1 1)) (next ks))
+              (not e1) (recur (assoc! m k (e2 1)) (next ks))
+              (not e2) (recur (assoc! m k (e1 1)) (next ks))
+              :else    (recur m (next ks))))
+      (persistent! m))))
+
+(defn- opdater-historik [nyt-abon gl-abon] 
+  (let [diff (dissoc (map-difference nyt-abon gl-abon) :historik :opdateret)
+        historik (vec (:historik gl-abon))
+        ny-historik (conj historik (assoc diff :dato (tf/unparse datetime-formatter (tc/now))))]
+    (when (not (empty? diff))
+      (redis/lpush db (str "abonnement:" (:id nyt-abon) ":historik") (json/json-str ny-historik)))))
+
+
 (defn make-abon-map [abon]
   (loop [a (keys abon) res {}]
     (if (empty? a)
@@ -36,24 +61,27 @@
   (redis/incr db "abonnement:nr"))
 
 (defn set-redis [abon ny]
-  (let [abon-map (make-abon-map (if ny (assoc abon :id (str (nyt-abonnr))) abon))]
-    (when (:juridiskaccount abon)
-      (redis/sadd db (str "abonnement:" (:juridiskaccount abon) ":juridisk") (:id abon)))
-    (when (:juridiskaccount abon)
-      (redis/sadd db (str "abonnement:" (:betaleraccount abon) ":betaler") (:id abon)))
-    (when (and (:amsid abon) (:instnr abon))
-      (redis/sadd db (str "abonnement:" (:amsid abon) "." (:instnr abon) ":installation") (:id abon)))
-    (when (:varenr abon)
-      (redis/sadd db (str "abonnement:" (:varenr abon) ":varenr") (:id abon)))
-    (redis/hmset db (str "abonnement:" (:id abon)) abon-map)))
+  (let [id (str (nyt-abonnr))
+        abon-map (make-abon-map (if ny (assoc abon :id id) abon))]
+    (when (:juridiskaccount abon-map)
+      (redis/sadd db (str "abonnement:" (:juridiskaccount abon-map) ":juridisk") (:id abon-map)))
+    (when (:juridiskaccount abon-map)
+      (redis/sadd db (str "abonnement:" (:betaleraccount abon-map) ":betaler") (:id abon-map)))
+    (when (and (:amsid abon-map) (:instnr abon-map))
+      (redis/sadd db (str "abonnement:" (:amsid abon-map) "." (:instnr abon-map) ":installation") (:id abon-map)))
+    (when (:varenr abon-map)
+      (redis/sadd db (str "abonnement:" (:varenr abon-map) ":varenr") (:id abon-map)))
+    [id (redis/hmset db (str "abonnement:" (:id abon-map)) abon-map)]))
 
 (defn opret [abon]
-  (set-redis abon true))
+  (set-redis (assoc abon :start (tf/unparse datetime-formatter (tc/now)) :historik (str "abonnement:" (:id abon) ":historik")) true))
 
 (defn opdater [abon ifmatch]
-  (let [etag (hash (find-abon (:id abon)))]
+  (let [exist-abon (find-abon (:id abon))
+        etag (hash exist-abon)]
     (if (= etag ifmatch)
-      (set-redis abon false)
+      (let [abon-hist (opdater-historik (make-abon-map abon) exist-abon)]
+        (set-redis abon false))
       "CHG")))
 
 (defn find-abon [id]

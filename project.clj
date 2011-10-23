@@ -11,7 +11,9 @@
                  ;[ring-common "1.1.5"]
                  [http.async.client "0.3.1"]
                  [org.slf4j/slf4j-simple "1.6.1"]
-                 [clj-redis "0.0.13-SNAPSHOT"]                 
+                 [clj-redis "0.0.13-SNAPSHOT"]
+                ; [com.ashafa/clutch "0.2.5"]
+                 [clj-http "0.1.2"]
                  [log4j "1.2.15" :exclusions [javax.mail/mail
                                               javax.jms/jms
                                               com.sun.jdmk/jmxtools

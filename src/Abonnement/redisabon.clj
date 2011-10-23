@@ -3,7 +3,6 @@
   (:require [clojure.data.json :as json]
             [clj-time.core :as tc]
             [clj-time.format :as tf]
-            [clj-redis.client :as redis]
             [clj-redis.client :as redis]))
 
 (def db (redis/init :url "redis://46.137.157.48"))
@@ -61,7 +60,7 @@
   (redis/incr db "abonnement:nr"))
 
 (defn set-redis [abon ny]
-  (let [id (str (nyt-abonnr))
+  (let [id (if ny (str (nyt-abonnr)) (:id abon))
         abon-map (make-abon-map (if ny (assoc abon :id id) abon))]
     (when (:juridiskaccount abon-map)
       (redis/sadd db (str "abonnement:" (:juridiskaccount abon-map) ":juridisk") (:id abon-map)))
@@ -76,6 +75,10 @@
 (defn opret [abon]
   (set-redis (assoc abon :start (tf/unparse datetime-formatter (tc/now)) :historik (str "abonnement:" (:id abon) ":historik")) true))
 
+(defn find-abon [id]
+  (let [res (redis/hgetall db (str "abonnement:" id))]
+    (keywordize-keys (into {} res))))
+
 (defn opdater [abon ifmatch]
   (let [exist-abon (find-abon (:id abon))
         etag (hash exist-abon)]
@@ -84,11 +87,7 @@
         (set-redis abon false))
       "CHG")))
 
-(defn find-abon [id]
-  (let [res (redis/hgetall db (str "abonnement:" id))]
-    (keywordize-keys (into {} res))))
-
-(defn opsig [id]
+(defn opsig [id] ;; TODO mangler historik
   (redis/hset db (str "abonnement:" id) "status" "opsagt"))
 
 (defn find-alle-abon-for-account [accid & abon-type]

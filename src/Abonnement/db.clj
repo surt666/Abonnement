@@ -9,7 +9,7 @@
             [http.async.client :as http-client])
   (:import (java.util UUID)))
 
-(def edm {:classname "oracle.jdbc.driver.OracleDriver", :subprotocol "oracle:thin", :subname "@lisbon.tdk.dk:1521:tctvspoc", :user "k2_dw", :password "K2_DW_ON_SPOC"})
+(def edm {:classname "oracle.jdbc.driver.OracleDriver", :subprotocol "oracle:thin", :subname "@lisbon.tdk.dk:1521:tctvspoc", :user "k2_dw", :password "bla"})
 
 (defn get-all-subscriptions-for-amsno [amsno]
   (sql/with-connection edm

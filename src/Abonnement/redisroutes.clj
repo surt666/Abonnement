@@ -4,11 +4,26 @@
         Abonnement.redisabon
         yousee-common.wrappers        
         ring.commonrest
-        yousee-common.web)
+        ;yousee-common.web
+        )
   (:require [compojure.route :as route]
             [compojure.handler :as handler]
             [clojure.walk :as walk]
             [clojure.data.json :as json]))
+
+(defn- keywordize-json [b] 
+  (if (not (empty? b))
+    (walk/keywordize-keys (json/read-json b))
+    nil))
+
+(defn parse-body [body]
+  "Find ud af om vi er i app server eller unit test"
+  (cond
+    (map? body) (walk/keywordize-keys body)
+    (instance? java.lang.String) (keywordize-json body)
+    :default
+    (keywordize-json (slurp body))))
+
 
 (comment (defn json-response [data content-type & {:as attrs}]
    "Data is the http body, :status is optional httpcode, :etag is optional calculated etag value and content-type is ex. application/vnd.yoursee+json. :cache-control and :expires are optional"    
@@ -72,5 +87,5 @@
 
 (def app
   (-> (handler/site handler)
-      ;;(wrap-request-log-and-error-handling :body-str :body :status :server-port :query-string :server-name :uri :request-method :content-type :headers :json-params :params)
+      (wrap-request-log-and-error-handling :body-str :body :status :server-port :query-string :server-name :uri :request-method :content-type :headers :json-params :params)
       )) 

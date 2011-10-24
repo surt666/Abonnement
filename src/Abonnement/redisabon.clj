@@ -5,7 +5,9 @@
             [clj-time.format :as tf]
             [clj-redis.client :as redis]))
 
-(def db (redis/init :url "redis://46.137.157.48"))
+;;(def db (redis/init :url "redis://46.137.157.48"))
+
+(def db (redis/init :url "redis://localhost"))
 
 (def datetime-formatter (tf/formatter "dd-MM-yyyy|hh:mm:ss"))
 

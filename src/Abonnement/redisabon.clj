@@ -61,19 +61,19 @@
 
 (defn set-redis [abon ny]
   (let [id (if ny (str (nyt-abonnr)) (:id abon))
-        abon-map (make-abon-map (if ny (assoc abon :id id) abon))]
+        abon-map (keywordize-keys (make-abon-map (if ny (assoc abon :id id :start (tf/unparse datetime-formatter (tc/now)) :historik (str "abonnement:" id ":historik")) abon)))]    
     (when (:juridiskaccount abon-map)
-      (redis/sadd db (str "abonnement:" (:juridiskaccount abon-map) ":juridisk") (:id abon-map)))
+      (prn "JUR" (do (redis/sadd db (str "abonnement:" (:juridiskaccount abon-map) ":juridisk") (:id abon-map)))))
     (when (:juridiskaccount abon-map)
-      (redis/sadd db (str "abonnement:" (:betaleraccount abon-map) ":betaler") (:id abon-map)))
+      (do (redis/sadd db (str "abonnement:" (:betaleraccount abon-map) ":betaler") (:id abon-map))))
     (when (and (:amsid abon-map) (:instnr abon-map))
-      (redis/sadd db (str "abonnement:" (:amsid abon-map) "." (:instnr abon-map) ":installation") (:id abon-map)))
+      (do (redis/sadd db (str "abonnement:" (:amsid abon-map) "." (:instnr abon-map) ":installation") (:id abon-map))))
     (when (:varenr abon-map)
-      (redis/sadd db (str "abonnement:" (:varenr abon-map) ":varenr") (:id abon-map)))
-    [id (redis/hmset db (str "abonnement:" (:id abon-map)) abon-map)]))
+      (do (redis/sadd db (str "abonnement:" (:varenr abon-map) ":varenr") (:id abon-map))))
+    [id (redis/hmset db (str "abonnement:" (:id abon-map)) abon-map)])) ;;TODO hmset tager jo ikke et map !!!
 
 (defn opret [abon]
-  (set-redis (assoc abon :start (tf/unparse datetime-formatter (tc/now)) :historik (str "abonnement:" (:id abon) ":historik")) true))
+  (set-redis abon true))
 
 (defn find-abon [id]
   (let [res (redis/hgetall db (str "abonnement:" id))]

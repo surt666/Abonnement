@@ -1,6 +1,6 @@
 (defproject Abonnement "1.0.0"
   :description "Abonnement system"
-  :dependencies [[org.clojure/clojure "1.3.0"]
+  :dependencies [[org.clojure/clojure "1.2.1"]
                  [org.clojure/java.jdbc "0.1.0"]
                  [org.clojure/data.json "0.1.1"]   
                  [compojure "0.6.4"]

@@ -1,28 +1,28 @@
-(ns Abonnement.routes
+(ns Abonnement.redisroutes
   (:use compojure.core
         ring.util.response
         Abonnement.redisabon
         yousee-common.wrappers        
-       ;; ring.commonrest
+        ring.commonrest
         yousee-common.web)
   (:require [compojure.route :as route]
             [compojure.handler :as handler]
             [clojure.walk :as walk]
             [clojure.data.json :as json]))
 
-(defn json-response [data content-type & {:as attrs}]
-  "Data is the http body, :status is optional httpcode, :etag is optional calculated etag value and content-type is ex. application/vnd.yoursee+json. :cache-control and :expires are optional"    
-  (let [res {:status (or (:status attrs) 200)
-             :headers {"Content-Type" content-type 
-                       "ETag" (str (if (:etag attrs) (:etag attrs) (hash data)))}
-             :body (json/json-str data)}
-        res2 (if (:cache-control attrs)
-               (assoc-in res [:headers "Cache-Control"] (:cache-control attrs))
-               res)
-        res3 (if (:expires attrs)
-               (assoc-in res2 [:headers "Expires"] (:expires attrs))
-               res2)]
-    res3))
+(comment (defn json-response [data content-type & {:as attrs}]
+   "Data is the http body, :status is optional httpcode, :etag is optional calculated etag value and content-type is ex. application/vnd.yoursee+json. :cache-control and :expires are optional"    
+   (let [res {:status (or (:status attrs) 200)
+              :headers {"Content-Type" content-type 
+                        "ETag" (str (if (:etag attrs) (:etag attrs) (hash data)))}
+              :body (json/json-str data)}
+         res2 (if (:cache-control attrs)
+                (assoc-in res [:headers "Cache-Control"] (:cache-control attrs))
+                res)
+         res3 (if (:expires attrs)
+                (assoc-in res2 [:headers "Expires"] (:expires attrs))
+                res2)]
+     res3)))
 
 (defn- opret-abonnement [req]  
   (let [body (parse-body (:body req))]

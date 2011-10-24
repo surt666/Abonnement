@@ -59,6 +59,9 @@
 (defn nyt-abonnr []
   (redis/incr db "abonnement:nr"))
 
+(defn generer-key-val-streng [map]
+  (reduce str (map #(str % " " (get map %) " ") (keys map))))
+
 (defn set-redis [abon ny]
   (let [id (if ny (str (nyt-abonnr)) (:id abon))
         abon-map (keywordize-keys (make-abon-map (if ny (assoc abon :id id :start (tf/unparse datetime-formatter (tc/now)) :historik (str "abonnement:" id ":historik")) abon)))]    
@@ -70,7 +73,7 @@
       (do (redis/sadd db (str "abonnement:" (:amsid abon-map) "." (:instnr abon-map) ":installation") (:id abon-map))))
     (when (:varenr abon-map)
       (do (redis/sadd db (str "abonnement:" (:varenr abon-map) ":varenr") (:id abon-map))))
-    [id (redis/hmset db (str "abonnement:" (:id abon-map)) abon-map)])) ;;TODO hmset tager jo ikke et map !!!
+    [id (redis/hmset db (str "abonnement:" (:id abon-map)) (generer-key-val-streng abon-map))])) ;;TODO hmset tager jo ikke et map !!!
 
 (defn opret [abon]
   (set-redis abon true))
@@ -87,7 +90,7 @@
         (set-redis abon false))
       "CHG")))
 
-(defn opsig [id] ;; TODO mangler historik
+(defn opsig [id] 
   (redis/hset db (str "abonnement:" id) "status" "opsagt"))
 
 (defn find-alle-abon-for-account [accid & abon-type]

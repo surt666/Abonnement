@@ -3,7 +3,8 @@
   (:require [clojure.data.json :as json]
             [clj-time.core :as tc]
             [clj-time.format :as tf]
-            [clj-http.client :as client]
+            [http.async.client :as http-client]
+            ;; [clj-http.client :as client]
             ;; [com.ashafa.clutch :as clutch]
             )
   (:import (java.util UUID)))
@@ -29,6 +30,11 @@
                        betaler
                        historik])
 
+(defn wait-resp [resp]
+  (when-not (http-client/done? resp)
+    (http-client/await resp)
+    (http-client/done? resp)))
+
 (defn map-difference [m1 m2]
   (loop [m (transient {})
          ks (concat (keys m1) (keys m2))]
@@ -48,19 +54,25 @@
 
 (defn opret [abon]
   (let [uuid (.. UUID randomUUID toString)]
-    (->> (assoc abon :start (tf/unparse datetime-formatter (tc/now)) :id uuid)
-         json/json-str
-         (hash-map :body)
-         (client/put (str db "/" uuid)))
+    (with-open [client (http-client/create-client)]
+      (let [resp (http-client/PUT client (str db "/" uuid)
+                                    :body (json/json-str (assoc abon :start (tf/unparse datetime-formatter (tc/now)) :id uuid))                          
+                                    :headers {:content-type "application/json"}
+                                    :proxy {:host "sltarray02" :port 8080})]
+          (wait-resp resp)                  
+          (:code (http-client/status resp))))    
     ;; (clutch/with-db db
     ;;   (clutch/create-document (assoc abon :start (tf/unparse datetime-formatter (tc/now)) :id uuid) uuid))
     ))
 
 (defn find-abon [id]
-  (-> (str db "/" id)
-      client/get
-      :body
-      json/read-json)
+  (with-open [client (http-client/create-client)]
+    (let [resp (http-client/GET client (str db "/" id)                                
+                                :proxy {:host "sltarray02" :port 8080})]
+      (wait-resp resp)      
+      (if (= 200 (:code (http-client/status resp)))        
+        (json/read-json (http-client/string resp))
+        (http-client/status resp))))  
   ;; (clutch/with-db db
   ;;   (clutch/get-document id))
   )

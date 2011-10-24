@@ -7,8 +7,6 @@
 
 (def db (redis/init :url "redis://46.137.157.48"))
 
-(def date-formatter (tf/formatter "dd-MM-yyyy"))
-
 (def datetime-formatter (tf/formatter "dd-MM-yyyy|hh:mm:ss"))
 
 (defrecord Abonnement [id

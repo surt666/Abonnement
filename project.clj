@@ -30,4 +30,4 @@
                      [swank-clojure "1.3.3"]]
   :aot [Abonnement.servlet]
   :war {:web-content "war-root"}
-  :jvm-opts ["-Xmx1500m"])
+  :jvm-opts ["-Xmx2g"])

@@ -12,18 +12,6 @@
             [clojure.walk :as walk]
             [clojure.data.json :as json]))
 
-(comment (defn- keywordize-json [b]  
-   (if (not (empty? b))
-     (walk/keywordize-keys (json/read-json b))
-     nil))
-
-         (defn parse-body [body]
-           "Find ud af om vi er i app server eller unit test"
-           (cond
-            (map? body) (walk/keywordize-keys body)
-            (instance? java.lang.String) (keywordize-json body)
-            :default (keywordize-json (slurp body)))))
-
 (defn- opret-abonnement [req]  
   (let [body (parse-body (:body req))]
     (Abonnement.redisabon.Abonnement. (:id body) (:juridiskaccount body) (:betaleraccount body) (:varenr body) (:status body) (:parent body) (:start body) (:amsid body) (:instnr body) (:ordreid body) (:serienr body) (:aktiveringskode body) (:tlfnr body) (:juridisk body) (:betaler body) (:historik body))))
@@ -33,7 +21,7 @@
         (let [abon (opret-abonnement req)              
               res (opret abon)
              status (if (= "OK" (get res 1)) 200 400)]
-         (json-response (get res 0) "application/json;charset=UTF-8" :status status)))
+          (json-response {:id (get res 0)} "application/json;charset=UTF-8" :status status)))
   (PUT ["/:context" , :context #".[^/]*"] req
        (let [ifmatch (get (:headers req) "if-match")
              abon (opret-abonnement req)

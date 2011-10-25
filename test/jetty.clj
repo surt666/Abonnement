@@ -1,6 +1,6 @@
 (ns jetty
   (:use ring.adapter.jetty)
-  (:use Abonnement.routes)  
+  (:use Abonnement.redisroutes)  
   (:import (org.mortbay.xml XmlConfiguration)
 	   (org.mortbay.jetty.webapp WebAppContext)))
 

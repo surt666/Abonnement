@@ -41,9 +41,10 @@
       (persistent! m))))
 
 (defn- opdater-historik [nyt-abon gl-abon] 
-  (let [diff (dissoc (map-difference nyt-abon gl-abon) :historik :opdateret)
-        historik (vec (:historik gl-abon))
+  (let [diff (dissoc (map-difference nyt-abon gl-abon) :historik)
+        historik (vector (:historik gl-abon))
         ny-historik (conj historik (assoc diff :dato (tf/unparse datetime-formatter (tc/now))))]
+    (prn "D" diff)
     (when (not (empty? diff))
       (redis/lpush db (str "abonnement:" (:id nyt-abon) ":historik") (json/json-str ny-historik)))))
 
@@ -59,21 +60,19 @@
 (defn nyt-abonnr []
   (redis/incr db "abonnement:nr"))
 
-(defn generer-key-val-streng [map]
-  (reduce str (map #(str % " " (get map %) " ") (keys map))))
-
 (defn set-redis [abon ny]
   (let [id (if ny (str (nyt-abonnr)) (:id abon))
-        abon-map (keywordize-keys (make-abon-map (if ny (assoc abon :id id :start (tf/unparse datetime-formatter (tc/now)) :historik (str "abonnement:" id ":historik")) abon)))]    
+        abon-map-str (make-abon-map (if ny (assoc abon :id id :start (tf/unparse datetime-formatter (tc/now)) :historik (str "abonnement:" id ":historik")) abon))
+        abon-map (keywordize-keys abon-map-str)]    
     (when (:juridiskaccount abon-map)
-      (prn "JUR" (do (redis/sadd db (str "abonnement:" (:juridiskaccount abon-map) ":juridisk") (:id abon-map)))))
+      (redis/sadd db (str "abonnement:" (:juridiskaccount abon-map) ":juridisk") (:id abon-map)))
     (when (:juridiskaccount abon-map)
-      (do (redis/sadd db (str "abonnement:" (:betaleraccount abon-map) ":betaler") (:id abon-map))))
+      (redis/sadd db (str "abonnement:" (:betaleraccount abon-map) ":betaler") (:id abon-map)))
     (when (and (:amsid abon-map) (:instnr abon-map))
-      (do (redis/sadd db (str "abonnement:" (:amsid abon-map) "." (:instnr abon-map) ":installation") (:id abon-map))))
+      (redis/sadd db (str "abonnement:" (:amsid abon-map) "." (:instnr abon-map) ":installation") (:id abon-map)))
     (when (:varenr abon-map)
-      (do (redis/sadd db (str "abonnement:" (:varenr abon-map) ":varenr") (:id abon-map))))
-    [id (redis/hmset db (str "abonnement:" (:id abon-map)) (generer-key-val-streng abon-map))])) ;;TODO hmset tager jo ikke et map !!!
+      (redis/sadd db (str "abonnement:" (:varenr abon-map) ":varenr") (:id abon-map)))
+    [id (redis/hmset db (str "abonnement:" (:id abon-map)) abon-map-str)])) 
 
 (defn opret [abon]
   (set-redis abon true))
@@ -84,9 +83,9 @@
 
 (defn opdater [abon ifmatch]
   (let [exist-abon (find-abon (:id abon))
-        etag (hash exist-abon)]
+        etag (str (hash exist-abon))]    
     (if (= etag ifmatch)
-      (let [abon-hist (opdater-historik (make-abon-map abon) exist-abon)]
+      (let [abon-hist (opdater-historik (keywordize-keys (make-abon-map abon)) exist-abon)]
         (set-redis abon false))
       "CHG")))
 

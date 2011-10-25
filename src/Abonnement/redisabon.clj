@@ -12,12 +12,15 @@
 (def datetime-formatter (tf/formatter "dd-MM-yyyy|hh:mm:ss"))
 
 (def ^:dynamic *ring* {
-           :0 (redis/init :url "redis://localhost:6379")
-          ; :1 (redis/init :url "redis://localhost:6389")
+                       :m0 db :s0 db
+                     ; :m1 db1 :s1 db2
+                     ; :m2 db3 :s2 db4
            })
 
-(defn find-db [key]
-  (get *ring* (keyword (str (mod (hash key) (count (keys *ring*)))))))
+(defn find-db [key & [write]]
+  (let [nc (mod (hash key) (/ (count (keys *ring*)) 2))
+        key (if write (str "m" nc) (get [(str "m" nc) (str "s" nc)] (rand-int 2)))]    
+    (get *ring* (keyword key))))
 
 
 (defrecord Abonnement [id
@@ -54,7 +57,8 @@
         historik (vector (:historik gl-abon))
         ny-historik (conj historik (assoc diff :dato (tf/unparse datetime-formatter (tc/now))))]    
     (when (not (empty? diff))
-      (redis/lpush db (str "abonnement:" (:id nyt-abon) ":historik") (json/json-str ny-historik)))))
+      (let [key (str "abonnement:" (:id nyt-abon) ":historik")]
+        (redis/lpush (find-db key true) key (json/json-str ny-historik))))))
 
 
 (defn make-abon-map [abon]
@@ -67,7 +71,7 @@
 
 (defn nyt-abonnr []
   (let [key "abonnement:nr"]
-    (redis/incr (find-db key) key)))
+    (redis/incr (find-db key true) key)))
 
 (defn set-redis [abon ny]
   (let [id (if ny (str (nyt-abonnr)) (:id abon))
@@ -75,18 +79,18 @@
         abon-map (keywordize-keys abon-map-str)]    
     (when (:juridiskaccount abon-map)
       (let [key (str "abonnement:" (:juridiskaccount abon-map) ":juridisk")]
-        (redis/sadd (find-db key) key (:id abon-map))))
+        (redis/sadd (find-db key true) key (:id abon-map))))
     (when (:juridiskaccount abon-map)
       (let [key (str "abonnement:" (:betaleraccount abon-map) ":betaler")]
-        (redis/sadd (find-db key) key (:id abon-map))))
+        (redis/sadd (find-db key true) key (:id abon-map))))
     (when (and (:amsid abon-map) (:instnr abon-map))
       (let [key (str "abonnement:" (:amsid abon-map) "." (:instnr abon-map) ":installation")]
-        (redis/sadd (find-db key) key (:id abon-map))))
+        (redis/sadd (find-db key true) key (:id abon-map))))
     (when (:varenr abon-map)
       (let [key (str "abonnement:" (:varenr abon-map) ":varenr")]
-        (redis/sadd (find-db key) key (:id abon-map))))
+        (redis/sadd (find-db key true) key (:id abon-map))))
     [id (let [key (str "abonnement:" (:id abon-map))]
-          (redis/hmset (find-db key) key abon-map-str))])) 
+          (redis/hmset (find-db key true) key abon-map-str))])) 
 
 (defn opret [abon]
   (set-redis abon true))
@@ -123,9 +127,9 @@
 
 (defn find-alle-abon-for-varenr [varenr]
   (let [key (str "abonnement:" varenr ":varenr")
-        abon-keys (redis/smembers db key)]
+        abon-keys (redis/smembers (find-db key) key)]
     (map #(keywordize-keys (into {} (let [key (str "abonnement:" %)]
                                       (redis/hgetall (find-db) key)))) abon-keys)))
 
-(defn antal-keys []
-  (count (redis/keys db "abonnement:*")))
+(comment (defn antal-keys []
+   (count (redis/keys db "abonnement:*"))))

@@ -5,8 +5,7 @@
         yousee-common.wrappers        
         ring.commonrest
         clojure.walk
-        yousee-common.web
-        )
+        yousee-common.web)
   (:require [compojure.route :as route]
             [compojure.handler :as handler]
             [clojure.walk :as walk]
@@ -14,7 +13,7 @@
 
 (defn- opret-abonnement [req]  
   (let [body (parse-body (:body req))]
-    (Abonnement.redisabon.Abonnement. (:id body) (:juridiskaccount body) (:betaleraccount body) (:varenr body) (:status body) (:parent body) (:start body) (:amsid body) (:instnr body) (:ordreid body) (:serienr body) (:aktiveringskode body) (:tlfnr body) (:juridisk body) (:betaler body) (:historik body))))
+    (Abonnement.redisabon.Abonnement. (:id body) (:juridiskaccount body) (:betaleraccount body) (:varenr body) (:status body) (:parent body) (:start body) (:amsid body) (:instnr body) (:kontrakt body) (:ordreid body) (:serienr body) (:aktiveringskode body) (:tlfnr body) (:juridisk body) (:betaler body) (:historik body))))
 
 (defroutes handler
   (POST ["/:context" , :context #".[^/]*"] req
@@ -28,7 +27,7 @@
              res (opdater abon ifmatch)            
              status (cond
                      (= "OK" (get res 1)) 204
-                     (= "CHG" res) 412
+                     (= "CHG" res) 409
                      :default 400)]
          (json-response nil "application/json;charset=UTF-8" :status status)))
   (GET ["/:context/:id" , :context #".[^/]*"] [id]

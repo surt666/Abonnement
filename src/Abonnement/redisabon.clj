@@ -1,5 +1,6 @@
 (ns Abonnement.redisabon
-  (:use clojure.walk)
+  (:use clojure.walk
+        digest)
   (:require [clojure.data.json :as json]
             [clj-time.core :as tc]
             [clj-time.format :as tf]
@@ -7,21 +8,35 @@
 
 ;;(def db (redis/init :url "redis://46.137.157.48"))
 
-(def db (redis/init :url "redis://localhost"))
+(def db1 (redis/init :url "redis://localhost:6379"))
+
+(def db2 (redis/init :url "redis://localhost:6380"))
 
 (def datetime-formatter (tf/formatter "dd-MM-yyyy|hh:mm:ss"))
 
 (def ^:dynamic *ring* {
-                       :m0 db :s0 db
+                       :m0 db1 :s0 db2
                      ; :m1 db1 :s1 db2
                      ; :m2 db3 :s2 db4
-           })
+                       })
 
-(defn find-db [key & [write]]
-  (let [nc (mod (hash key) (/ (count (keys *ring*)) 2))
-        key (if write (str "m" nc) (get [(str "m" nc) (str "s" nc)] (rand-int 2)))]    
-    (get *ring* (keyword key))))
+(def node-depth 2)  ;; the number of nodes with same data 
 
+(defn find-db [key & [write]]  
+  (let [hash (read-string (str "0x" (sha1 key))) ;; sha1 is much more expensive than standard hash. Is it necessary ?
+        nc (mod hash (/ (count (keys *ring*)) node-depth))]
+    (if write
+      (get *ring* (keyword (str "m" nc)))
+      (loop [res nil]
+        (if (not (nil? res))
+          res
+          (recur (let [key (get [(str "m" nc) (str "s" nc)] (rand-int node-depth))
+                       db (get *ring* (keyword key))]                   
+                   (try
+                     (redis/ping db)
+                     db
+                     (catch Exception e
+                       nil)))))))))
 
 (defrecord Abonnement [id
                        juridiskaccount
@@ -32,6 +47,7 @@
                        start
                        amsid
                        instnr
+                       kontrakt
                        ordreid
                        serienr
                        aktiveringskode
@@ -89,18 +105,26 @@
     (when (:varenr abon-map)
       (let [key (str "abonnement:" (:varenr abon-map) ":varenr")]
         (redis/sadd (find-db key true) key (:id abon-map))))
-    [id (let [key (str "abonnement:" (:id abon-map))]
+    [id (let [key (str "abonnement:" (:id abon-map) ":abonnement")]
           (redis/hmset (find-db key true) key abon-map-str))])) 
 
-(defn opret [abon]
+(defn opret [abon] 
+  {:pre [(not (nil? (:varenr abon)))
+         (not (nil? (:juridiskaccount abon)))
+         (not (nil? (:betaleraccount abon)))
+         (not (nil? (:status abon)))]}
   (set-redis abon true))
 
 (defn find-abon [id]
-  (let [key (str "abonnement:" id)
+  (let [key (str "abonnement:" id ":abonnement")
         res (redis/hgetall (find-db key) key)]
     (keywordize-keys (into {} res))))
 
 (defn opdater [abon ifmatch]
+  {:pre [(not (nil? (:varenr abon)))
+         (not (nil? (:juridiskaccount abon)))
+         (not (nil? (:betaleraccount abon)))
+         (not (nil? (:status abon)))]}
   (let [exist-abon (find-abon (:id abon))
         etag (str (hash exist-abon))]    
     (if (= etag ifmatch)
@@ -116,20 +140,20 @@
   (let [type (if (= (first abon-type) "betaler") "betaler" "juridisk")
         key (str "abonnement:" accid ":" type)
         abon-keys (redis/smembers (find-db key) key)]
-    (map #(keywordize-keys (into {} (let [key (str "abonnement:" %)]
+    (map #(keywordize-keys (into {} (let [key (str "abonnement:" % ":abonnement")]
                                       (redis/hgetall (find-db key) key)))) abon-keys)))
 
 (defn find-alle-abon-for-amsid-og-instnr [amsid instnr]
   (let [key (str "abonnement:" amsid "." instnr ":installation")
         abon-keys (redis/smembers (find-db key) key)]
-    (map #(keywordize-keys (into {} (let [key (str "abonnement:" %)]
+    (map #(keywordize-keys (into {} (let [key (str "abonnement:" % ":abonnement")]
                                       (redis/hgetall (find-db key) key)))) abon-keys)))
 
 (defn find-alle-abon-for-varenr [varenr]
   (let [key (str "abonnement:" varenr ":varenr")
         abon-keys (redis/smembers (find-db key) key)]
-    (map #(keywordize-keys (into {} (let [key (str "abonnement:" %)]
+    (map #(keywordize-keys (into {} (let [key (str "abonnement:" % ":abonnement")]
                                       (redis/hgetall (find-db) key)))) abon-keys)))
 
-(comment (defn antal-keys []
-   (count (redis/keys db "abonnement:*"))))
+(defn antal-keys []
+  (count (redis/keys db2 "abonnement:*:abonnement")))

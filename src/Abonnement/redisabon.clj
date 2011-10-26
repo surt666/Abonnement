@@ -116,8 +116,9 @@
 
 (defn find-abon [id]
   (let [key (str "abonnement:" id ":abonnement")
-        res (redis/hgetall (find-db key) key)]
-    (keywordize-keys (into {} res))))
+        res (redis/hgetall (find-db key) key)
+        ret (keywordize-keys (into {} res))]
+    (assoc ret :serienr (json/read-json (:serienr ret)))))
 
 (defn opdater [abon ifmatch]
   {:pre [(not (nil? (:varenr abon)))
@@ -139,8 +140,10 @@
   (let [type (if (= (first abon-type) "betaler") "betaler" "juridisk")
         key (str "abonnement:" accid ":" type)
         abon-keys (redis/smembers (find-db key) key)]
-    (map #(keywordize-keys (into {} (let [key (str "abonnement:" % ":abonnement")]
-                                      (redis/hgetall (find-db key) key)))) abon-keys)))
+    (map #(keywordize-keys (into {} (let [key (str "abonnement:" % ":abonnement")
+                                          res (redis/hgetall (find-db key) key)
+                                          ret (keywordize-keys (into {} res))]
+                                      (assoc ret :serienr (json/read-json (:serienr ret)))))) abon-keys)))
 
 (defn find-alle-abon-for-amsid-og-instnr [amsid instnr]
   (let [key (str "abonnement:" amsid "." instnr ":installation")

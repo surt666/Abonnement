@@ -56,7 +56,7 @@
                        betaler
                        historik])
 
-(defn map-difference [m1 m2]
+(defn- map-difference [m1 m2]
   (loop [m (transient {})
          ks (concat (keys m1) (keys m2))]
     (if-let [k (first ks)]
@@ -69,9 +69,8 @@
       (persistent! m))))
 
 (defn- opdater-historik [nyt-abon gl-abon] 
-  (let [diff (dissoc (map-difference nyt-abon gl-abon) :historik)
-        historik (vector (:historik gl-abon))
-        ny-historik (conj historik (assoc diff :dato (tf/unparse datetime-formatter (tc/now))))]    
+  (let [diff (dissoc (map-difference nyt-abon gl-abon) :historik)       
+        ny-historik (assoc diff :dato (tf/unparse datetime-formatter (tc/now)))]    
     (when (not (empty? diff))
       (let [key (str "abonnement:" (:id nyt-abon) ":historik")]
         (redis/lpush (find-db key true) key (json/json-str ny-historik))))))
@@ -85,11 +84,11 @@
                         res
                         (assoc res (name (first a)) (get abon (first a))))))))
 
-(defn nyt-abonnr []
+(defn- nyt-abonnr []
   (let [key "abonnement:nr"]
     (redis/incr (find-db key true) key)))
 
-(defn set-redis [abon ny]
+(defn- set-redis [abon ny]
   (let [id (if ny (str (nyt-abonnr)) (:id abon))
         abon-map-str (make-abon-map (if ny (assoc abon :id id :start (tf/unparse datetime-formatter (tc/now)) :historik (str "abonnement:" id ":historik")) abon))
         abon-map (keywordize-keys abon-map-str)]    

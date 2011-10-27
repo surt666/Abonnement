@@ -14,7 +14,7 @@
 
 (def datetime-formatter (tf/formatter "dd-MM-yyyy|hh:mm:ss"))
 
-(def ^:dynamic *ring* {
+(def ^:dynamic *ring* { ;; TODO some schema for more than one slave should be devised
                        :m0 db1 :s0 db2
                      ; :m1 db1 :s1 db2
                      ; :m2 db3 :s2 db4
@@ -33,7 +33,7 @@
           (recur (let [key (get [(str "m" nc) (str "s" nc)] (rand-int node-depth))
                        db (get *ring* (keyword key))]                   
                    (try
-                     (redis/ping db)
+                     (redis/ping db) ;; TODO this ping step should be made unneccasary
                      db
                      (catch Exception e
                        nil)))))))))
@@ -88,7 +88,7 @@
   (let [key "abonnement:nr"]
     (redis/incr (find-db key true) key)))
 
-(defn- set-redis [abon ny]
+(defn- set-redis [abon ny]  ;; TODO should handle rollback if some key can't be written
   (let [id (if ny (str (nyt-abonnr)) (:id abon))
         abon-map-str (make-abon-map (if ny (assoc abon :id id :start (tf/unparse datetime-formatter (tc/now)) :historik (str "abonnement:" id ":historik")) abon))
         abon-map (keywordize-keys abon-map-str)]    
@@ -111,7 +111,8 @@
   {:pre [(not (nil? (:varenr abon)))
          (not (nil? (:juridiskaccount abon)))
          (not (nil? (:betaleraccount abon)))
-         (not (nil? (:status abon)))]}
+         (not (nil? (:status abon)))
+         (not (nil? (:ordreid abon)))]}
   (set-redis abon true))
 
 (defn find-abon [id]
@@ -124,7 +125,8 @@
   {:pre [(not (nil? (:varenr abon)))
          (not (nil? (:juridiskaccount abon)))
          (not (nil? (:betaleraccount abon)))
-         (not (nil? (:status abon)))]}
+         (not (nil? (:status abon)))
+         (not (nil? (:ordreid abon)))]}
   (let [exist-abon (find-abon (:id abon))
         etag (str (hash exist-abon))]    
     (if (= etag ifmatch)
